@@ -1,57 +1,33 @@
 use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
-use chrono::Utc;
-use chrono_tz::Asia::Tokyo;
-use uuid::Uuid;
-mod models;
-use models::error_response;
-use models::response;
-
 use serde_json::json;
+mod models;
+use models::error_response_builder::ErrorResponseBuilder;
+use models::success_response_builder::SuccessResponseBuilder;
 
 #[get("/")]
 async fn hello() -> impl Responder {
-    let res: response::Response = response::Response {
-        meta: response::Meta {
-            total_pages: Some(20),
-            timestamp: Utc::now().with_timezone(&Tokyo).to_rfc3339(),
-        },
-        data: vec![response::Data {
-            r#type: "nk".to_string(),
-            id: Uuid::new_v4().to_string(),
-            attributes: json!({}),
-            relationships: json!({}),
-        }],
-        included: vec![],
-        links: response::Links {
-            self_link: Some("http://localhost:3000".to_string()),
-            first: None,
-            prev: None,
-            next: None,
-            last: None,
-        },
-    };
+    let res: SuccessResponseBuilder = SuccessResponseBuilder::new()
+        .total_pages(0)
+        .self_link("http://localhost:8080".to_string())
+        .push_data(
+            "message".to_string(),
+            json!({"message":"Hellow from root!"}),
+            json!({}),
+        );
 
     HttpResponse::Ok().json(res)
 }
 
 #[get("/error")]
 async fn error() -> impl Responder {
-    let res: error_response::ErrorResponse = error_response::ErrorResponse {
-        errors: vec![error_response::Error {
-            id: Uuid::new_v4().to_string(),
-            code: 400,
-            status: "400 Bad Request".to_string(),
-            source: error_response::Source {
-                pointer: "/data/json".to_string(),
-                parameter: "sort".to_string(),
-            },
-            title: "Bad Request".to_string(),
-            detail: "Invalid Format".to_string(),
-            meta: error_response::Meta {
-                timestamp: Utc::now().with_timezone(&Tokyo).to_rfc3339(),
-            },
-        }],
-    };
+    let res: ErrorResponseBuilder = ErrorResponseBuilder::new().push(
+        400,
+        "400_BAD_REQUEST",
+        "/data/url",
+        "sort",
+        "Bad Request",
+        "Request format is incorrect. Please review it again.",
+    );
 
     HttpResponse::Ok().json(res)
 }
